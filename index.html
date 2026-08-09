@@ -398,14 +398,16 @@
             renderStats();
         }
 
-                                            function renderMVP() {
+                                                    function renderMVP() {
             const mainMenuContainer = document.getElementById('mvpContent');
             const pageContainer = document.getElementById('mvpPageContent');
             const titleContainer = document.getElementById('mvpPageTitle');
             
             const today = new Date();
-            // ТЕСТ ДАТЫ: если проверяешь 27 число, просто замени today.getDate() на чистую цифру 27
-            const dayOfMonth = today.getDate() 
+            const dayOfMonth = today.getDate(); 
+            
+            // 🛠 ДЛЯ ТЕСТА ГОЛОСОВАНИЯ: раскомментируй строчку ниже (удали два слэша), если хочешь проверить режим 27-го числа
+            // const dayOfMonth = 27; 
             
             const monthsPast = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
             const monthsCurrent = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
@@ -414,14 +416,13 @@
 
             const mvpInfo = dbData.mvp.find(m => m.Турнир_ID == currentTournamentId);
             if (!mvpInfo) {
-                if (mainMenuContainer) mainMenuContainer.innerHTML = 'Данные отсутствуют.';
-                if (pageContainer) pageContainer.innerHTML = '<div class="loader">Данные отсутствуют.</div>';
+                if (mainMenuContainer) mainMenuContainer.innerHTML = 'Данные о турнире в таблице не найдены.';
+                if (pageContainer) pageContainer.innerHTML = '<div class="loader">Данные о турнире в таблице не найдены.</div>';
                 return;
             }
 
             // === 1. ЛОГИКА ДЛЯ ГОЛОСОВАНИЯ (с 27 числа) ===
             if (dayOfMonth >= 27) {
-                // Выводим информацию на главный баннер в меню
                 if (mainMenuContainer) {
                     mainMenuContainer.innerHTML = `
                         <div style="font-weight: bold; color: var(--accent-color); font-size: 1.05rem;">
@@ -431,13 +432,10 @@
                     `;
                 }
                 
-                // Выводим информацию на отдельной большой странице
                 if (pageContainer) {
                     if (titleContainer) titleContainer.innerText = "Голосование за MVP (" + monthsCurrent[currentMonthIdx] + ")";
                     
-                    // ПРОВЕРКА НАКРУТКИ: смотрим в память телефона
-                    const currentPeriod = currentTournamentId + '_' + today.getMonth() + '_' + today.getFullYear();
-
+                    const currentPeriod = today.getMonth() + '_' + today.getFullYear();
                     if (localStorage.getItem('has_voted_' + currentPeriod) === 'true') {
                         pageContainer.innerHTML = `
                             <div class="match-card" style="flex-direction: column; text-align:center; padding: 20px; width: 100%; box-sizing: border-box;">
@@ -446,7 +444,7 @@
                                 <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Результаты будут подведены 1-го числа.</div>
                             </div>
                         `;
-                        return; // Защита сработала: прерываем код, форму выбора ниже не показываем!
+                        return;
                     }
 
                     const candidates = mvpInfo.Кандидаты ? mvpInfo.Кандидаты.split(';') : [];
@@ -464,55 +462,50 @@
                     }
                 }
             } 
-            // === 2. РОБОТ САМ НАХОДИТ ЛИДЕРА И ЕГО СТАТИСТИКУ (с 1 по 26 число) ===
+            // === 2. ЛОГИКА ДЛЯ ОБЫЧНЫХ ДНЕЙ (Робот считает голоса по индексам колонок) ===
             else {
                 const displayTitle = "Лучший игрок " + monthsPast[pastMonthIdx];
                 
-                // 1. Считаем голоса из Google Формы прямо в памяти мини-аппа
                 let voteCounts = {};
                 let winnerName = "Еще не определен";
                 let maxVotes = 0;
 
-                // Фильтруем голоса: считаем только те, которые совпали с текущей вкладкой турнира
                 const activeTab = document.querySelector('.tab-btn.active');
-                const currentTournamentName = activeTab ? activeTab.innerText.trim() : '';
+                const currentTournamentName = activeTab ? activeTab.innerText.trim().toLowerCase() : '';
 
                 if (dbData.votes && dbData.votes.length > 0) {
                     dbData.votes.forEach(row => {
-                        // Переводим название текущей вкладки в нижний регистр для надежности
-                        const currentTabLower = currentTournamentName.toLowerCase().trim();
+                        const rowValues = Object.values(row);
                         
-                        // Превращаем всю строчку таблицы в один сплошной текст
-                        const rowString = JSON.stringify(row).toLowerCase();
+                        // Жестко берем данные по номерам колонок:
+                        // rowValues[0] - Отметка времени, rowValues[1] - Игрок, rowValues[2] - Турнир
+                        const player = rowValues[1] ? rowValues[1].trim() : '';
+                        const voteTournament = rowValues[2] ? rowValues[2].trim().toLowerCase() : '';
                         
-                        // Если в этой строчке вообще упоминается имя нашей лиги
-                        if (rowString.includes(currentTabLower)) {
-                            // Автоматически вытаскиваем имя игрока (обычно это вторая или третья колонка)
-                            const rowValues = Object.values(row);
-                            // Берем значение, где написано имя кандидата
-                            const player = row['Выбранный игрок  '] || row['Выбранный игрок'] || rowValues[1] || '';
-                            if (player) {
-                                const pName = player.trim();
-                                voteCounts[pName] = (voteCounts[pName] || 0) + 1;
-                                if (voteCounts[pName] > maxVotes) {
-                                    maxVotes = voteCounts[pName];
-                                    winnerName = pName;
-                                }
+                        if (voteTournament === currentTournamentName && player) {
+                            voteCounts[player] = (voteCounts[player] || 0) + 1;
+                            if (voteCounts[player] > maxVotes) {
+                                maxVotes = voteCounts[player];
+                                winnerName = player;
                             }
                         }
                     });
+                } else {
+                    winnerName = "Нет загруженных голосов";
                 }
-                // 2. АВТОПОИСК: Ищем этого победителя на листе "Статистика", чтобы забрать голы и пасы
+
+                // Убираем скобки у победителя для точного поиска в общей статистике
+                let cleanWinnerName = winnerName;
+                if (winnerName.indexOf('(') !== -1) {
+                    cleanWinnerName = winnerName.split('(')[0].trim();
+                }
+
+                // Ищем показатели лидера на листе "Статистика"
                 let winnerTeam = "Нет команды";
                 let winnerGoals = 0;
                 let winnerAssists = 0;
 
-                if (winnerName !== "Еще не определен" && dbData.stats) {
-                    // ОЧИСТКА: Если имя прилетело со скобками вроде "Иван Иванов (Спартак)", 
-                    // код отрежет скобку и оставит только чистое имя "Иван Иванов"
-                    const cleanWinnerName = winnerName.split('(')[0].trim();
-
-                    // Ищем игрока в текущем турнире по чистому имени
+                if (winnerName !== "Еще не определен" && winnerName !== "Нет загруженных голосов" && dbData.stats) {
                     const playerStats = dbData.stats.find(s => {
                         const sName = (s.Игрок || s.Igrok || '').trim();
                         return (s.Турнир_ID == currentTournamentId) && (sName === cleanWinnerName);
@@ -525,7 +518,6 @@
                     }
                 }
 
-                // 3. Отображаем результат на баннере главного меню
                 if (mainMenuContainer) {
                     mainMenuContainer.innerHTML = `
                         <div style="font-weight: bold; font-size: 1.1rem;">${winnerName}</div>
@@ -533,7 +525,6 @@
                     `;
                 }
                 
-                // 4. Отображаем результат на большой странице лучшего игрока
                 if (pageContainer) {
                     if (titleContainer) titleContainer.innerText = displayTitle;
                     pageContainer.innerHTML = `
@@ -543,7 +534,6 @@
                                 <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px;">${winnerName}</div>
                                 <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 5px;"><i class="fa-solid fa-shirt"></i> ФК «${winnerTeam}»</div>
                             </div>
-                            
                             <div style="display: flex; justify-content: center; gap: 40px; width: 100%; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">
                                 <div>
                                     <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-color);">${winnerGoals}</div>
@@ -554,7 +544,7 @@
                                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Пасы</div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Народный выбор: ${maxVotes} шт.</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Всего голосов: ${maxVotes} шт.</div>
                         </div>
                     `;
                 }
