@@ -508,12 +508,39 @@
                 }
             }
         }
-        function submitVote() {
+                function submitVote() {
+            // 1. Код находит выпадающий список на экране и берет выбранного игрока
+            const selected = document.getElementById('voteSelect').value;
+            if (!selected) return;
+
+            // Твои личные точные координаты Google Формы
             const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdm3zJabv0-koIId9nhk_iSyZ-Fs8InrJgkhFeuqU5cP97P_A/formResponse';
             const ENTRY_ID = 'entry.1423116174';
 
-            const selected = document.getElementById('voteSelect').value;
-            alert(`Успешно! Вы проголосовали за: ${selected}`);
+            // Генерируем ключ месяца для защиты от накрутки
+            const currentPeriod = new Date().getMonth() + '_' + new Date().getFullYear();
+
+            // 2. Упаковываем имя игрока в фоновый пакет данных
+            const formData = new FormData();
+            formData.append(ENTRY_ID, selected);
+
+            // 3. САМЫЙ ГЛАВНЫЙ ШАГ: отправляем этот пакет по сети в Google
+            fetch(FORM_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: formData
+            })
+            .then(function() {
+                // Записываем в память телефона, что юзер проголосовал
+                localStorage.setItem('has_voted_' + currentPeriod, 'true');
+                
+                alert('Успешно! Вы проголосовали за: ' + selected + '. Ваш голос учтен!');
+                renderMVP(); // Перерисовываем экран, чтобы скрыть форму
+            })
+            .catch(function(err) {
+                console.error('Ошибка отправки:', err);
+                alert('Произошла ошибка при отправке голоса. Попробуйте позже.');
+            });
         }
 
                 function renderMatches() {
