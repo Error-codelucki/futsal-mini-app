@@ -352,11 +352,15 @@
                 document.getElementById('tournamentsTabs').innerHTML = '<div class="loader" style="color:red">Ошибка: Вы не указали ID Google Таблицы в коде!</div>';
                 return;
             }
-
             dbData.tournaments = await fetchSheetData('Турниры');
             dbData.matches = await fetchSheetData('Матчи');
             dbData.stats = await fetchSheetData('Статистика');
             dbData.mvp = await fetchSheetData('Лучший_Игрок');
+            // Скачиваем голоса напрямую по цифровому паспорту листа
+            const gidUrl = 'https://google.com' + SPREADSHEET_ID + '/gviz/tq?tqx=out:csv&gid=1838737255';
+            const gidResponse = await fetch(gidUrl);
+            const gidText = await gidResponse.text();
+            dbData.votes = parseCSV(gidText);
 
             if (dbData.tournaments.length === 0) {
                 document.getElementById('tournamentsTabs').innerHTML = '<div class="loader" style="color:red">Ошибка: Данные не загрузились. Проверьте публикацию таблицы.</div>';
