@@ -436,7 +436,8 @@
                     if (titleContainer) titleContainer.innerText = "Голосование за MVP (" + monthsCurrent[currentMonthIdx] + ")";
                     
                     // ПРОВЕРКА НАКРУТКИ: смотрим в память телефона
-                    const currentPeriod = today.getMonth() + '_' + today.getFullYear();
+                    const currentPeriod = currentTournamentId + '_' + today.getMonth() + '_' + today.getFullYear();
+
                     if (localStorage.getItem('has_voted_' + currentPeriod) === 'true') {
                         pageContainer.innerHTML = `
                             <div class="match-card" style="flex-direction: column; text-align:center; padding: 20px; width: 100%; box-sizing: border-box;">
@@ -514,7 +515,8 @@
 
 
             // Генерируем ключ месяца для защиты от накрутки
-            const currentPeriod = new Date().getMonth() + '_' + new Date().getFullYear();
+            const currentPeriod = currentTournamentId + '_' + new Date().getMonth() + '_' + new Date().getFullYear();
+
 
             // 2. Упаковываем имя игрока в фоновый пакет данных
             const formData = new FormData();
