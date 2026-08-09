@@ -187,6 +187,16 @@
             padding: 14px;
             text-align: left;
         }
+        /* Задаем ширину: 50% для первой колонки с игроком */
+        .stats-table th:first-child, .stats-table td:first-child {
+            width: 50%;
+        }
+        /* Задаем ширину и центровку для колонок голов и пасов */
+        .stats-table th:nth-child(2), .stats-table td:nth-child(2),
+        .stats-table th:nth-child(3), .stats-table td:nth-child(3) {
+            width: 25%;
+            text-align: center;
+        }
         .stats-table th {
             background-color: #222;
             color: var(--text-muted);
@@ -466,7 +476,6 @@
                     <td style="font-weight:bold; color:var(--accent-color)">${s.Голы || 0}</td>
                     <td>${s.Пасы || 0}</td>
                 `;
-                container.appendChild(tr);
             });
         }
 
