@@ -228,11 +228,12 @@
         <div class="loader">Загрузка турниров...</div>
     </div>
 
-    <!-- ГЛАВНОЕ МЕНЮ -->
+       <!-- ГЛАВНОЕ МЕНЮ -->
     <div id="page-menu" class="page active">
-        <div class="mvp-banner" id="mvpBlock">
+        <!-- Кликабельный баннер на главном экране -->
+        <div class="mvp-banner" id="mvpBlock" onclick="navigateTo('mvp')" style="cursor: pointer; transition: 0.2s;">
             <h3><i class="fa-solid fa-crown"></i> Лучший игрок</h3>
-            <div id="mvpContent">Загрузка...</div>
+            <div id="mvpContent"><div class="loader" style="padding:0; text-align:left;">Загрузка...</div></div>
         </div>
 
         <div class="menu-container">
@@ -245,12 +246,11 @@
                 <span>СТАТИСТИКА</span>
             </button>
             <button class="menu-btn" onclick="navigateTo('mvp')">
-    <i class="fa-solid fa-crown"></i>
-    <span>ЛУЧШИЙ ИГРОК</span>
-    </button>
+                <i class="fa-solid fa-crown"></i>
+                <span>ЛУЧШИЙ ИГРОК</span>
+            </button>
         </div>
     </div>
-
     <!-- МАТЧИ -->
     <div id="page-matches" class="page">
         <button class="back-btn" onclick="navigateTo('menu')"><i class="fa-solid fa-arrow-left"></i> Назад</button>
@@ -398,87 +398,104 @@
             renderStats();
         }
 
-                    function renderMVP() {
-            const container = document.getElementById('mvpPageContent');
+                            function renderMVP() {
+            const mainMenuContainer = document.getElementById('mvpContent');
+            const pageContainer = document.getElementById('mvpPageContent');
             const titleContainer = document.getElementById('mvpPageTitle');
             
-            if (!container) return;
-
             const today = new Date();
-            
-            // СТАНДАРТНЫЙ РЕЖИМ (автоматический):
             const dayOfMonth = today.getDate(); 
-
-            // 🛠 РЕЖИМ ПРОВЕРКИ (ДЛЯ ТЕСТА): 
-            // Чтобы проверить голосование, сотри два слэша в начале строчки ниже,
-            // а у строчки выше (строка 10) наоборот поставь два слэша в начале.
+            
+            // 🛠 ДЛЯ ТЕСТА ГОЛОСОВАНИЯ: раскомментируй строчку ниже (удали два слэша), если хочешь проверить режим 27-го числа
             // const dayOfMonth = 27; 
             
             const mvpInfo = dbData.mvp.find(m => m.Турнир_ID == currentTournamentId);
             
             if (!mvpInfo) {
-                container.innerHTML = '<div class="loader">Данные о лучшем игроке отсутствуют.</div>';
+                if (mainMenuContainer) mainMenuContainer.innerHTML = 'Данные отсутствуют.';
+                if (pageContainer) pageContainer.innerHTML = '<div class="loader">Данные отсутствуют.</div>';
                 return;
             }
 
-            // Условие: если число с 27 по 31 — включаем интерактивное голосование
-            if (dayOfMonth >= 27) {
-                titleContainer.innerText = "Голосование за MVP";
-                const candidates = mvpInfo.Кандидаты ? mvpInfo.Кандидаты.split(';') : [];
-                if (candidates.length > 0) {
-                    let selectHtml = `
-                        <div class="match-card" style="flex-direction: column; align-items: flex-start; gap: 15px;">
-                            <p style="font-size:1.05rem; margin:0; font-weight:bold; color:var(--accent-color)">
-                                <i class="fa-solid fa-fire"></i> Открыто голосование за лучшего игрока месяца!
-                            </p>
-                            <p style="font-size:0.9rem; margin:0; color:var(--text-muted)">Выберите вашего кандидата из списка ниже:</p>
-                            <select class="vote-select" id="voteSelect" style="margin-bottom:0;">
-                    `;
-                    candidates.forEach(c => {
-                        selectHtml += `<option value="${c.trim()}">${c.trim()}</option>`;
-                    });
-                    selectHtml += `
-                            </select>
-                            <button class="vote-btn" onclick="submitVote()">Отдать свой голос</button>
-                        </div>
-                    `;
-                    container.innerHTML = selectHtml;
-                } else {
-                    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted)">Список кандидатов для голосования пока пуст.</div>';
-                }
-            } else {
-                // В остальное время — выводим красивую карточку победителя с его статистикой!
-                titleContainer.innerText = "Лучший игрок месяца";
-                
-                const name = mvpInfo.Текущий_Победитель || 'Имя не указано';
-                const team = mvpInfo.Команда_Победителя || mvpInfo.Команда || 'Команда не указана';
-                const goals = mvpInfo.Голы_Победителя || mvpInfo.Голы || '0';
-                const assists = mvpInfo.Пасы_Победителя || mvpInfo.Пасы || '0';
+            const name = mvpInfo.Текущий_Победитель || 'Не определен';
+            const team = mvpInfo.Команда_Победителя || mvpInfo.Команда || 'Нет команды';
+            const goals = mvpInfo.Голы_Победителя || mvpInfo.Голы || '0';
+            const assists = mvpInfo.Пасы_Победителя || mvpInfo.Пасы || '0';
 
-                container.innerHTML = `
-                    <div class="match-card" style="flex-direction: column; padding: 25px 20px; background: linear-gradient(135deg, var(--card-bg) 0%, #222 100%); border-top: 4px solid var(--accent-color); gap: 20px; text-align:center;">
-                        <div>
-                            <div style="font-size: 2rem; color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-trophy"></i></div>
-                            <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px;">${name}</div>
-                            <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 5px;"><i class="fa-solid fa-shirt"></i> ФК «${team}»</div>
+            // === ЛОГИКА ДЛЯ ГОЛОСОВАНИЯ (с 27 числа) ===
+            if (dayOfMonth >= 27) {
+                // 1. Что пишем на баннере главного меню:
+                if (mainMenuContainer) {
+                    mainMenuContainer.innerHTML = `
+                        <div style="font-weight: bold; color: var(--accent-color); font-size: 1.05rem; animation: pulse 2s infinite;">
+                            <i class="fa-solid fa-circle-dot"></i> ОТКРЫТО ГОЛОСОВАНИЕ!
                         </div>
-                        
-                        <div style="display: flex; justify-content: center; gap: 40px; width: 100%; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">
-                            <div>
-                                <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-color);">${goals}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Голы</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Нажми сюда, чтобы отдать свой голос за MVP</div>
+                    `;
+                }
+                
+                // 2. Что показываем на отдельной странице:
+                if (pageContainer) {
+                    if (titleContainer) titleContainer.innerText = "Голосование за MVP";
+                    const candidates = mvpInfo.Кандидаты ? mvpInfo.Кандидаты.split(';') : [];
+                    if (candidates.length > 0) {
+                        let selectHtml = `
+                            <div class="match-card" style="flex-direction: column; align-items: flex-start; gap: 15px;">
+                                <p style="font-size:1.05rem; margin:0; font-weight:bold; color:var(--accent-color)">
+                                    <i class="fa-solid fa-fire"></i> Выберите вашего кандидата:
+                                </p>
+                                <select class="vote-select" id="voteSelect" style="margin-bottom:0;">
+                        `;
+                        candidates.forEach(c => {
+                            selectHtml += `<option value="${c.trim()}">${c.trim()}</option>`;
+                        });
+                        selectHtml += `
+                                </select>
+                                <button class="vote-btn" onclick="submitVote()">Отдать свой голос</button>
                             </div>
+                        `;
+                        pageContainer.innerHTML = selectHtml;
+                    } else {
+                        pageContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted)">Список кандидатов пуст.</div>';
+                    }
+                }
+            } 
+            // === ЛОГИКА ДЛЯ ОБЫЧНЫХ ДНЕЙ ===
+            else {
+                // 1. Что пишем на баннере главного меню:
+                if (mainMenuContainer) {
+                    mainMenuContainer.innerHTML = `
+                        <div style="font-weight: bold; font-size: 1.1rem;">${name}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top:4px;">ФК «${team}» &bull; Лучший в прошлом месяце</div>
+                    `;
+                }
+                
+                // 2. Что показываем на отдельной странице:
+                if (pageContainer) {
+                    if (titleContainer) titleContainer.innerText = "Лучший игрок месяца";
+                    pageContainer.innerHTML = `
+                        <div class="match-card" style="flex-direction: column; padding: 25px 20px; background: linear-gradient(135deg, var(--card-bg) 0%, #222 100%); border-top: 4px solid var(--accent-color); gap: 20px; text-align:center;">
                             <div>
-                                <div style="font-size: 1.6rem; font-weight: bold; color: #fff;">${assists}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Пасы</div>
+                                <div style="font-size: 2rem; color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-trophy"></i></div>
+                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px;">${name}</div>
+                                <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 5px;"><i class="fa-solid fa-shirt"></i> ФК «${team}»</div>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: center; gap: 40px; width: 100%; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">
+                                <div>
+                                    <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-color);">${goals}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Голы</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 1.6rem; font-weight: bold; color: #fff;">${assists}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Пасы</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             }
         }
-
-
         function submitVote() {
             const selected = document.getElementById('voteSelect').value;
             alert(`Успешно! Вы проголосовали за: ${selected}`);
