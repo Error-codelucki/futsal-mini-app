@@ -502,11 +502,15 @@
                 let winnerAssists = 0;
 
                 if (winnerName !== "Еще не определен" && dbData.stats) {
-                    // Ищем игрока в текущем турнире
-                    const playerStats = dbData.stats.find(s => 
-                        (s.Турнир_ID == currentTournamentId) && 
-                        ((s.Игрок && s.Игрок.trim() === winnerName.trim()) || (s.Igrok && s.Igrok.trim() === winnerName.trim()))
-                    );
+                    // ОЧИСТКА: Если имя прилетело со скобками вроде "Иван Иванов (Спартак)", 
+                    // код отрежет скобку и оставит только чистое имя "Иван Иванов"
+                    const cleanWinnerName = winnerName.split('(')[0].trim();
+
+                    // Ищем игрока в текущем турнире по чистому имени
+                    const playerStats = dbData.stats.find(s => {
+                        const sName = (s.Игрок || s.Igrok || '').trim();
+                        return (s.Турнир_ID == currentTournamentId) && (sName === cleanWinnerName);
+                    });
 
                     if (playerStats) {
                         winnerTeam = playerStats.Команда || playerStats.Komanda || "Команда не указана";
