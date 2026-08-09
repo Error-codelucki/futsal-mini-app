@@ -464,40 +464,87 @@
                     }
                 }
             } 
-            // === 2. ЛОГИКА ДЛЯ ОБЫЧНЫХ ДНЕЙ ===
+            // === 2. РОБОТ САМ НАХОДИТ ЛИДЕРА И ЕГО СТАТИСТИКУ (с 1 по 26 число) ===
             else {
                 const displayTitle = "Лучший игрок " + monthsPast[pastMonthIdx];
-                const name = mvpInfo.Текущий_Победитель || 'Не определен';
-                const team = mvpInfo.Команда_Победителя || mvpInfo.Команда || 'Нет команды';
-                const goals = mvpInfo.Голы_Победителя || mvpInfo.Голы || '0';
-                const assists = mvpInfo.Пасы_Победителя || mvpInfo.Пасы || '0';
+                
+                // 1. Считаем голоса из Google Формы прямо в памяти мини-аппа
+                let voteCounts = {};
+                let winnerName = "Еще не определен";
+                let maxVotes = 0;
 
+                // Фильтруем голоса: считаем только те, которые совпали с текущей вкладкой турнира
+                const activeTab = document.querySelector('.tab-btn.active');
+                const currentTournamentName = activeTab ? activeTab.innerText.trim() : '';
+
+                if (dbData.votes && dbData.votes.length > 0) {
+                    dbData.votes.forEach(row => {
+                        // Проверяем, совпадает ли турнир в строчке ответа с текущим активным турниром
+                        // (Убедись, что заголовки колонок в ответах называются именно так, либо подставь свои)
+                        const voteTournament = row['Турнир'] || row['Tournament'] || '';
+                        
+                        if (voteTournament === currentTournamentName) {
+                            const player = row['Выбранный игрок'] || row['Игрок'] || '';
+                            if (player) {
+                                voteCounts[player] = (voteCounts[player] || 0) + 1;
+                                if (voteCounts[player] > maxVotes) {
+                                    maxVotes = voteCounts[player];
+                                    winnerName = player;
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 2. АВТОПОИСК: Ищем этого победителя на листе "Статистика", чтобы забрать голы и пасы
+                let winnerTeam = "Нет команды";
+                let winnerGoals = 0;
+                let winnerAssists = 0;
+
+                if (winnerName !== "Еще не определен" && dbData.stats) {
+                    // Ищем игрока в текущем турнире
+                    const playerStats = dbData.stats.find(s => 
+                        (s.Турнир_ID == currentTournamentId) && 
+                        ((s.Игрок && s.Игрок.trim() === winnerName.trim()) || (s.Igrok && s.Igrok.trim() === winnerName.trim()))
+                    );
+
+                    if (playerStats) {
+                        winnerTeam = playerStats.Команда || playerStats.Komanda || "Команда не указана";
+                        winnerGoals = playerStats.Голы || playerStats.Goly || 0;
+                        winnerAssists = playerStats.Пасы || playerStats.Pasy || 0;
+                    }
+                }
+
+                // 3. Отображаем результат на баннере главного меню
                 if (mainMenuContainer) {
                     mainMenuContainer.innerHTML = `
-                        <div style="font-weight: bold; font-size: 1.1rem;">${name}</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top:4px;">ФК «${team}» &bull; ${displayTitle}</div>
+                        <div style="font-weight: bold; font-size: 1.1rem;">${winnerName}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top:4px;">ФК «${winnerTeam}» &bull; ${displayTitle}</div>
                     `;
                 }
                 
+                // 4. Отображаем результат на большой странице лучшего игрока
                 if (pageContainer) {
                     if (titleContainer) titleContainer.innerText = displayTitle;
                     pageContainer.innerHTML = `
                         <div class="match-card" style="flex-direction: column; padding: 25px 20px; background: linear-gradient(135deg, var(--card-bg) 0%, #222 100%); border-top: 4px solid var(--accent-color); gap: 20px; text-align:center; width: 100%; box-sizing: border-box;">
                             <div>
                                 <div style="font-size: 2rem; color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-trophy"></i></div>
-                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px;">${name}</div>
-                                <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 5px;"><i class="fa-solid fa-shirt"></i> ФК «${team}»</div>
+                                <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px;">${winnerName}</div>
+                                <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 5px;"><i class="fa-solid fa-shirt"></i> ФК «${winnerTeam}»</div>
                             </div>
+                            
                             <div style="display: flex; justify-content: center; gap: 40px; width: 100%; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">
                                 <div>
-                                    <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-color);">${goals}</div>
+                                    <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-color);">${winnerGoals}</div>
                                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Голы</div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 1.6rem; font-weight: bold; color: #fff;">${assists}</div>
+                                    <div style="font-size: 1.6rem; font-weight: bold; color: #fff;">${winnerAssists}</div>
                                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Пасы</div>
                                 </div>
                             </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Народный выбор: ${maxVotes} шт.</div>
                         </div>
                     `;
                 }
