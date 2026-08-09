@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futsal Mini App</title>
+    <!-- Подключаем иконки FontAwesome как на макете -->
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1a1a1a;
+            --accent-color: #ff4500;
+            --text-color: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+
+        /* Шапка приложения */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header img {
+            max-width: 100px;
+            height: auto;
+        }
+
+        /* Динамические вкладки турниров вверху */
+        .tournaments-tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .tournaments-tabs::-webkit-scrollbar {
+            display: none;
+        }
+        .tab-btn {
+            background-color: var(--card-bg);
+            color: var(--text-muted);
+            border: 1px solid #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            white-space: nowrap;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border-color: var(--accent-color);
+        }
+
+        /* Главная кнопка "Лучший игрок" */
+        .mvp-banner {
+            background: linear-gradient(135deg, var(--card-bg) 0%, #252525 100%);
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .mvp-banner h3 {
+            margin: 0 0 8px 0;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .vote-select {
+            width: 100%;
+            padding: 10px;
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .vote-btn {
+            background: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Стили разделов Матчи и Статистика */
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        .section-title i {
+            color: var(--accent-color);
+        }
+
+        .match-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .match-info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .match-teams {
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        .match-score {
+            background: #222;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: var(--accent-color);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        /* Таблица статистики */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .stats-table th, .stats-table td {
+            padding: 12px;
+            text-align: left;
+        }
+        .stats-table th {
+            background-color: #222;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .stats-table tr {
+            border-bottom: 1px solid #222;
+        }
+        .stats-table tr:last-child {
+            border-bottom: none;
+        }
+        .player-team {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        /* Нижнее меню навигации (как на скриншоте) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #222;
+            z-index: 100;
+        }
+        .nav-item {
+            color: var(--text-muted);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.75rem;
+            gap: 4px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-item.active {
+            color: var(--accent-color);
+        }
+        .nav-item i {
+            font-size: 1.2rem;
+        }
+
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+
+        .loader {
+            text-align: center;
+            padding: 20px;
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Вкладки турниров из Гугл Таблицы -->
+    <div class="tournaments-tabs" id="tournamentsTabs">
+        <div class="loader">Загрузка турниров...</div>
+    </div>
+
+    <!-- Умный блок лучшего игрока -->
+    <div class="mvp-banner" id="mvpBlock">
+        <h3><i class="fa-solid fa-crown"></i> Лучший игрок</h3>
+        <div id="mvpContent">Загрузка...</div>
+    </div>
+
+    <!-- Страница: МАТЧИ -->
+    <div id="page-matches" class="page active">
+        <div class="section-title"><i class="fa-solid fa-calendar-days"></i> Расписание и результаты</div>
+        <div id="matchesList">
+            <div class="loader">Выберите турнир...</div>
+        </div>
+    </div>
+
+    <!-- Страница: СТАТИСТИКА -->
+    <div id="page-stats" class="page">
+        <div class="section-title"><i class="fa-solid fa-chart-simple"></i> Бомбардиры Лиги</div>
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Игрок</th>
+                    <th>Г</th>
+                    <th>П</th>
+                </tr>
+            </thead>
+            <tbody id="statsList">
+                <tr><td colspan="3" class="loader">Выберите турнир...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Нижнее меню навигации -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchPage('matches', this)">
+            <i class="fa-solid fa-soccer-ball"></i>
+            <span>Матчи</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('stats', this)">
+            <i class="fa-solid fa-chart-column"></i>
+            <span>Статистика</span>
+        </button>
+    </div>
+
+    <script>
+        // НАСТРОЙКА: Замените этот ID на ID вашей опубликованной таблицы
+        const SPREADSHEET_ID = '1PqM57MUZ1YapDOn2m05eRI2lOGjXyaC7t8N25kDiawA';
+
+        let currentTournamentId = null;
+        let dbData = { tournaments: [], matches: [], stats: [], mvp: [] };
+
+        // Переключение страниц в нижнем меню
+        function switchPage(pageId, element) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            element.classList.add('active');
+        }
+
+        // Парсинг CSV данных из Google Sheets API
+        async function fetchSheetData(sheetName) {
+            try {
+                const url = `https://google.com{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+                const response = await fetch(url);
+                const text = await response.text();
+                return parseCSV(text);
+            } catch (e) {
+                console.error("Ошибка загрузки листа: " + sheetName, e);
+                return [];
+            }
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            if (lines.length === 0) return [];
+
+            // Чистим заголовки от кавычек
+            const headers = lines[0].replace(/"/g, '').split(',');
+            const result = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const currentLine = lines[i].replace(/"/g, '').split(',');
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header.trim()] = currentLine[index] ? currentLine[index].trim() : '';
+                });
+                result.push(obj);
+            }
+            return result;
+        }
+
+        // Инициализация приложения и загрузка всех данных
+        async function initApp() {
+            dbData.tournaments = await fetchSheetData('Турниры');
+            dbData.matches = await fetchSheetData('Матчи');
+            dbData.stats = await fetchSheetData('Статистика');
+            dbData.mvp = await fetchSheetData('Лучший_Игрок');
+
+            renderTournaments();
+        }
+
+        // Отрисовка вкладок турниров
+        function renderTournaments() {
+            const container = document.getElementById('tournamentsTabs');
+            container.innerHTML = '';
+
+            if (dbData.tournaments.length === 0) {
+                container.innerHTML = '<div class="loader">Данные не найдены</div>';
+                return;
+            }
+
+            dbData.tournaments.forEach((t, index) => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn ${index === 0 ? 'active' : ''}`;
+                btn.innerText = t.Название;
+                btn.onclick = () => selectTournament(t.ID, btn);
+                container.appendChild(btn);
+            });
+
+            // По умолчанию выбираем первый турнир из списка
+            if (dbData.tournaments[0]) {
+                selectTournament(dbData.tournaments[0].ID);
+            }
+        }
+
+        function selectTournament(id, btnElement = null) {
+            currentTournamentId = id;
+            if (btnElement) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btnElement.classList.add('active');
+            }
+            renderContent();
+        }
+
+        // Обновление контента в зависимости от выбранного турнира
+        function renderContent() {
+            renderMVP();
+            renderMatches();
+            renderStats();
+        }
+
+        // Логика умной кнопки MVP (голосование с 27 числа)
+        function renderMVP() {
+            const container = document.getElementById('mvpContent');
+            const today = new Date();
+            const dayOfMonth = today.getDate();
+
+            const mvpInfo = dbData.mvp.find(m => m.Турнир_ID == currentTournamentId);
+
+            if (!mvpInfo) {
+                container.innerHTML = 'Нет данных по игрокам.';
+                return;
+            }
+
+            // Условие: если число месяца с 27 по 31 — включаем голосование
+            if (dayOfMonth >= 27) {
+                // Разделяем кандидатов, если в таблице они записаны через точку с запятой
+                const candidates = mvpInfo.Кандидаты ? mvpInfo.Кандидаты.split(';') : [];
+                if (candidates.length > 0) {
+                    let selectHtml = `<p style="font-size:0.9rem; margin-bottom:8px;">Идет голосование за лучшего игрока месяца!</p>`;
+                    selectHtml += `<select class="vote-select" id="voteSelect">`;
+                    candidates.forEach(c => {
+                        selectHtml += `<option value="${c.trim()}">${c.trim()}</option>`;
+                    });
+                    selectHtml += `</select><button class="vote-btn" onclick="submitVote()">Проголосовать</button>`;
+                    container.innerHTML = selectHtml;
+                } else {
+                    container.innerHTML = 'Список кандидатов для голосования пуст.';
+                }
+            } else {
+                // Обычные дни месяца — показываем действующего обладателя награды
+                container.innerHTML = `
+                    <div style="font-weight: bold; font-size: 1.1rem;">${mvpInfo.Текущий_Победитель || 'Еще не определен'}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top:4px;">Лучший игрок прошлого месяца</div>
+                `;
+            }
+        }
+
+        function submitVote() {
+            const selected = document.getElementById('voteSelect').value;
+            alert(`Спасибо! Ваш голос за "${selected}" учтен.`);
+        }
+
+        // Отрисовка списка матчей
+        function renderMatches() {
+            const container = document.getElementById('matchesList');
+            container.innerHTML = '';
+
+            const filteredMatches = dbData.matches.filter(m => m.Турнир_ID == currentTournamentId);
+
+            if (filteredMatches.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted)">Матчей не запланировано</div>';
+                return;
+            }
+
+            filteredMatches.forEach(m => {
+                const card = document.createElement('div');
+                card.className = 'match-card';
+                card.innerHTML = `
+                    <div>
+                        <div class="match-info">${m.Дата} &nbsp;&bull;&nbsp; ${m.Время}</div>
+                        <div class="match-teams">${m.Команда1} — ${m.Команда2}</div>
+                    </div>
+                    <div class="match-score">${m.Счет || 'VS'}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Отрисовка таблицы бомбардиров
+        function renderStats() {
+            const container = document.getElementById('statsList');
+            container.innerHTML = '';
+
+            const filteredStats = dbData.stats.filter(s => s.Турнир_ID == currentTournamentId);
+
+            if (filteredStats.length === 0) {
+                container.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted)">Статистика пока пуста</td></tr>';
+                return;
+            }
+
+            // Сортировка по голам (от большего к меньшему)
+            filteredStats.sort((a, b) => parseInt(b.Голы || 0) - parseInt(a.Голы || 0));
+
+            filteredStats.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <strong>${s.Игрок}</strong>
+                        <span class="player-team">${s.Команда}</span>
+                    </td>
+                    <td style="font-weight:bold; color:var(--accent-color)">${s.Голы || 0}</td>
+                    <td>${s.Пасы || 0}</td>
+                `;
+                container.appendChild(tr);
+            });
+        }
+
+        // Запуск приложения при полной загрузке страницы
+        window.onload = initApp;
