@@ -479,23 +479,30 @@
 
                 if (dbData.votes && dbData.votes.length > 0) {
                     dbData.votes.forEach(row => {
-                        // Проверяем, совпадает ли турнир в строчке ответа с текущим активным турниром
-                        // (Убедись, что заголовки колонок в ответах называются именно так, либо подставь свои)
-                        const voteTournament = row['Турнир'] || row['Tournament'] || '';
+                        // Переводим название текущей вкладки в нижний регистр для надежности
+                        const currentTabLower = currentTournamentName.toLowerCase().trim();
                         
-                        if (voteTournament === currentTournamentName) {
-                            const player = row['Выбранный игрок'] || row['Игрок'] || '';
+                        // Превращаем всю строчку таблицы в один сплошной текст
+                        const rowString = JSON.stringify(row).toLowerCase();
+                        
+                        // Если в этой строчке вообще упоминается имя нашей лиги
+                        if (rowString.includes(currentTabLower)) {
+                            // Автоматически вытаскиваем имя игрока (обычно это вторая или третья колонка)
+                            const rowValues = Object.values(row);
+                            // Берем значение, где написано имя кандидата
+                            const player = row['Выбранный игрок'] || row['Игрок'] || rowValues[1] || '';
+                            
                             if (player) {
-                                voteCounts[player] = (voteCounts[player] || 0) + 1;
-                                if (voteCounts[player] > maxVotes) {
-                                    maxVotes = voteCounts[player];
-                                    winnerName = player;
+                                const pName = player.trim();
+                                voteCounts[pName] = (voteCounts[pName] || 0) + 1;
+                                if (voteCounts[pName] > maxVotes) {
+                                    maxVotes = voteCounts[pName];
+                                    winnerName = pName;
                                 }
                             }
                         }
                     });
                 }
-
                 // 2. АВТОПОИСК: Ищем этого победителя на листе "Статистика", чтобы забрать голы и пасы
                 let winnerTeam = "Нет команды";
                 let winnerGoals = 0;
