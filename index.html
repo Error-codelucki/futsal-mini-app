@@ -468,14 +468,15 @@
 
             filteredStats.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
+                    tr.innerHTML = `
                     <td>
-                        <strong>${s.Игрок}</strong>
-                        <span class="player-team">${s.Команда}</span>
+                        <strong>${s.Игрок || s.Igrok || s.player || ''}</strong>
+                        <span class="player-team">${s.Команда || s.Komanda || s.team || ''}</span>
                     </td>
-                    <td style="font-weight:bold; color:var(--accent-color)">${s.Голы || 0}</td>
-                    <td>${s.Пасы || 0}</td>
+                    <td style="font-weight:bold; color:var(--accent-color)">${s.Голы || s.Goly || s.goals || 0}</td>
+                    <td>${s.Пасы || s.Pasy || s.assists || 0}</td>
                 `;
+                container.appendChild(tr);
             });
         }
 
