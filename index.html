@@ -430,18 +430,26 @@
             const goals = mvpInfo.Голы_Победителя || mvpInfo.Голы || '0';
             const assists = mvpInfo.Пасы_Победителя || mvpInfo.Пасы || '0';
 
-            // === ЛОГИКА ДЛЯ ГОЛОСОВАНИЯ (с 27 числа) ===
+                        // Условие: если число с 27 по 31 — включаем интерактивное голосование
             if (dayOfMonth >= 27) {
-                const voteTitle = "Голосование за MVP (" + monthsCurrent[currentMonthIdx] + ")";
+                if (titleContainer) titleContainer.innerText = "Голосование за MVP";
                 
-                // 1. Что пишем на баннере главного меню:
-                if (mainMenuContainer) {
-                    mainMenuContainer.innerHTML = `
-                        <div style="font-weight: bold; color: var(--accent-color); font-size: 1.05rem;">
-                            <i class="fa-solid fa-circle-dot"></i> ВЫБОР MVP ЗА ${monthsCurrent[currentMonthIdx].toUpperCase()}!
-                        </div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Голосование открыто. Нажми, чтобы сделать выбор</div>
-                    `;
+                // Проверяем локальную память телефона на наличие голоса в этом месяце
+                const currentPeriod = today.getMonth() + '_' + today.getFullYear();
+                const userAlreadyVoted = localStorage.getItem('has_voted_' + currentPeriod);
+
+                // ИСПРАВЛЕНО: Если метка найдена, выводим сообщение на страницу И БЛОКИРУЕМ дальнейший код
+                if (userAlreadyVoted === 'true') {
+                    if (pageContainer) {
+                        pageContainer.innerHTML = `
+                            <div class="match-card" style="flex-direction: column; text-align:center; padding: 20px;">
+                                <div style="font-size: 2rem; color: #4caf50; margin-bottom: 10px;"><i class="fa-solid fa-circle-check"></i></div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Вы уже проголосовали!</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Результаты будут подведены 1-го числа.</div>
+                            </div>
+                        `;
+                    }
+                    return; // Важно: выходим из функции, чтобы список кандидатов ниже не создавался!
                 }
                 
                 // 2. Что показываем на отдельной странице:
@@ -516,6 +524,8 @@
             // Твои личные точные координаты Google Формы
             const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdm3zJabv0-koIId9nhk_iSyZ-Fs8InrJgkhFeuqU5cP97P_A/formResponse';
             const ENTRY_ID = 'entry.1423116174';
+            const TOURNAMENT_ENTRY_ID = 'entry.243289790';
+
 
             // Генерируем ключ месяца для защиты от накрутки
             const currentPeriod = new Date().getMonth() + '_' + new Date().getFullYear();
@@ -523,6 +533,11 @@
             // 2. Упаковываем имя игрока в фоновый пакет данных
             const formData = new FormData();
             formData.append(ENTRY_ID, selected);
+            // Код сам находит, какая вкладка турнира сейчас активна, и берет её название
+const activeTab = document.querySelector('.tab-btn.active');
+const tournamentName = activeTab ? activeTab.innerText : 'Неизвестный турнир';
+
+formData.append(TOURNAMENT_ENTRY_ID, tournamentName);
 
             // 3. САМЫЙ ГЛАВНЫЙ ШАГ: отправляем этот пакет по сети в Google
             fetch(FORM_URL, {
