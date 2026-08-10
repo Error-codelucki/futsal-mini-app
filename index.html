@@ -352,7 +352,7 @@
                 document.getElementById('tournamentsTabs').innerHTML = '<div class="loader" style="color:red">Ошибка: Вы не указали ID Google Таблицы в коде!</div>';
                 return;
             }
-            dbData.tournaments = await fetchSheetData('Турниры');
+             dbData.tournaments = await fetchSheetData('Турниры');
             dbData.matches = await fetchSheetData('Матчи');
             dbData.stats = await fetchSheetData('Статистика');
             dbData.mvp = await fetchSheetData('Лучший_Игрок');
@@ -404,16 +404,14 @@
             renderStats();
         }
 
-                                                    function renderMVP() {
+                                                            function renderMVP() {
             const mainMenuContainer = document.getElementById('mvpContent');
             const pageContainer = document.getElementById('mvpPageContent');
             const titleContainer = document.getElementById('mvpPageTitle');
             
             const today = new Date();
+            // 🛠 ДЛЯ ТЕСТА ГОЛОСОВАНИЯ: замени today.getDate() на цифру 27, чтобы проверить форму выборов
             const dayOfMonth = today.getDate(); 
-            
-            // 🛠 ДЛЯ ТЕСТА ГОЛОСОВАНИЯ: раскомментируй строчку ниже (удали два слэша), если хочешь проверить режим 27-го числа
-            // const dayOfMonth = 27; 
             
             const monthsPast = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
             const monthsCurrent = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
@@ -422,113 +420,73 @@
 
             const mvpInfo = dbData.mvp.find(m => m.Турнир_ID == currentTournamentId);
             if (!mvpInfo) {
-                if (mainMenuContainer) mainMenuContainer.innerHTML = 'Данные о турнире в таблице не найдены.';
-                if (pageContainer) pageContainer.innerHTML = '<div class="loader">Данные о турнире в таблице не найдены.</div>';
+                if (mainMenuContainer) mainMenuContainer.innerHTML = 'Данные о турнире отсутствуют.';
+                if (pageContainer) pageContainer.innerHTML = '<div class="loader">Данные о турнире отсутствуют.</div>';
                 return;
             }
 
             // === 1. ЛОГИКА ДЛЯ ГОЛОСОВАНИЯ (с 27 числа) ===
             if (dayOfMonth >= 27) {
                 if (mainMenuContainer) {
-                    mainMenuContainer.innerHTML = `
-                        <div style="font-weight: bold; color: var(--accent-color); font-size: 1.05rem;">
-                            <i class="fa-solid fa-circle-dot"></i> ВЫБОР MVP ЗА ${monthsCurrent[currentMonthIdx].toUpperCase()}!
-                        </div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Голосование открыто. Нажми, чтобы сделать выбор</div>
-                    `;
+                    mainMenuContainer.innerHTML = '<div style="font-weight: bold; color: var(--accent-color); font-size: 1.05rem;"><i class="fa-solid fa-circle-dot"></i> ВЫБОР MVP ЗА ' + monthsCurrent[currentMonthIdx].toUpperCase() + '!</div><div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Голосование открыто. Нажми, чтобы сделать выбор</div>';
                 }
                 
                 if (pageContainer) {
                     if (titleContainer) titleContainer.innerText = "Голосование за MVP (" + monthsCurrent[currentMonthIdx] + ")";
                     
-                    const currentPeriod = today.getMonth() + '_' + today.getFullYear();
+                    const currentPeriod = currentTournamentId + '_' + today.getMonth() + '_' + today.getFullYear();
                     if (localStorage.getItem('has_voted_' + currentPeriod) === 'true') {
-                        pageContainer.innerHTML = `
-                            <div class="match-card" style="flex-direction: column; text-align:center; padding: 20px; width: 100%; box-sizing: border-box;">
-                                <div style="font-size: 2rem; color: #4caf50; margin-bottom: 10px;"><i class="fa-solid fa-circle-check"></i></div>
-                                <div style="font-weight: bold; font-size: 1.1rem;">Вы уже проголосовали!</div>
-                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Результаты будут подведены 1-го числа.</div>
-                            </div>
-                        `;
+                        pageContainer.innerHTML = '<div class="match-card" style="flex-direction: column; text-align:center; padding: 20px; width: 100%; box-sizing: border-box;"><div style="font-size: 2rem; color: #4caf50; margin-bottom: 10px;"><i class="fa-solid fa-circle-check"></i></div><div style="font-weight: bold; font-size: 1.1rem;">Вы уже проголосовали!</div><div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Результаты будут подведены 1-го числа.</div></div>';
                         return;
                     }
 
-                    const candidates = mvpInfo.Кандидаты ? mvpInfo.Кандидаты.split(';') : [];
+                    // АВТОКАНДИДАТЫ: Собираем список игроков текущего турнира из вкладки Статистика
+                    const candidates = dbData.stats.filter(function(s) { return s.Турнир_ID == currentTournamentId; });
+
                     if (candidates.length > 0) {
-                        let selectHtml = `
-                            <div class="match-card" style="flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; box-sizing: border-box;">
-                                <p style="font-size:1.05rem; margin:0; font-weight:bold; color:var(--accent-color)"><i class="fa-solid fa-fire"></i> Кандидаты лиги:</p>
-                                <select class="vote-select" id="voteSelect" style="margin-bottom:0;">
-                        `;
-                        candidates.forEach(c => { selectHtml += `<option value="${c.trim()}">${c.trim()}</option>`; });
-                        selectHtml += `</select><button class="vote-btn" onclick="submitVote()">Отдать свой голос</button></div>`;
+                        let selectHtml = '<div class="match-card" style="flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; box-sizing: border-box;"><p style="font-size:1.05rem; margin:0; font-weight:bold; color:var(--accent-color)"><i class="fa-solid fa-fire"></i> Кандидаты лиги:</p><select class="vote-select" id="voteSelect" style="margin-bottom:0;">';
+                        
+                        candidates.forEach(function(s) {
+                            const pName = s.Игрок || s.Igrok || 'Неизвестный';
+                            const pTeam = s.Команда || s.Komanda || 'Без команды';
+                            const optionText = pName + ' (' + pTeam + ')';
+                            selectHtml += '<option value="' + optionText + '">' + optionText + '</option>';
+                        });
+                        
+                        selectHtml += '</select><button class="vote-btn" onclick="submitVote()">Отдать свой голос</button></div>';
                         pageContainer.innerHTML = selectHtml;
                     } else {
-                        pageContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted)">Список кандидатов пуст.</div>';
+                        pageContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted)">Список кандидатов пуст (добавьте игроков во вкладку Статистика).</div>';
                     }
                 }
             } 
-            // === 2. ЛОГИКА ДЛЯ ОБЫЧНЫХ ДНЕЙ (Робот считает голоса по индексам колонок) ===
+            // === 2. ЛОГИКА ДЛЯ ОБЫЧНЫХ ДНЕЙ (Берем готового победителя и его статистику за месяц) ===
             else {
                 const displayTitle = "Лучший игрок " + monthsPast[pastMonthIdx];
                 
-                let voteCounts = {};
-                let winnerName = "Еще не определен";
-                let maxVotes = 0;
+                // Читаем имя победителя, которое макрос вписал в ячейку Текущий_Победитель
+                const winnerName = mvpInfo.Текущий_Победитель || 'Еще не определен';
 
-                const activeTab = document.querySelector('.tab-btn.active');
-                const currentTournamentName = activeTab ? activeTab.innerText.trim().toLowerCase() : '';
-
-                if (dbData.votes && dbData.votes.length > 0) {
-                    dbData.votes.forEach(row => {
-                        const rowValues = Object.values(row);
-                        
-                        // Жестко берем данные по номерам колонок:
-                        // rowValues[0] - Отметка времени, rowValues[1] - Игрок, rowValues[2] - Турнир
-                        const player = rowValues[1] ? rowValues[1].trim() : '';
-                        const voteTournament = rowValues[2] ? rowValues[2].trim().toLowerCase() : '';
-                        
-                        if (voteTournament === currentTournamentName && player) {
-                            voteCounts[player] = (voteCounts[player] || 0) + 1;
-                            if (voteCounts[player] > maxVotes) {
-                                maxVotes = voteCounts[player];
-                                winnerName = player;
-                            }
-                        }
-                    });
-                } else {
-                    winnerName = "Нет загруженных голосов";
-                }
-
-                // Убираем скобки у победителя для точного поиска в общей статистике
-                let cleanWinnerName = winnerName;
-                if (winnerName.indexOf('(') !== -1) {
-                    cleanWinnerName = winnerName.split('(')[0].trim();
-                }
-
-                // Ищем показатели лидера на листе "Статистика"
                 let winnerTeam = "Нет команды";
                 let winnerGoals = 0;
                 let winnerAssists = 0;
 
-                if (winnerName !== "Еще не определен" && winnerName !== "Нет загруженных голосов" && dbData.stats) {
-                    const playerStats = dbData.stats.find(s => {
+                if (winnerName !== "Еще не определен" && dbData.stats) {
+                    const playerStats = dbData.stats.find(function(s) {
                         const sName = (s.Игрок || s.Igrok || '').trim();
-                        return (s.Турнир_ID == currentTournamentId) && (sName === cleanWinnerName);
+                        return (s.Турнир_ID == currentTournamentId) && (sName === winnerName.trim());
                     });
 
                     if (playerStats) {
                         winnerTeam = playerStats.Команда || playerStats.Komanda || "Команда не указана";
-                        winnerGoals = playerStats.Голы || playerStats.Goly || 0;
-                        winnerAssists = playerStats.Пасы || playerStats.Pasy || 0;
+                        // Подтягиваем именно показатели за МЕСЯЦ!
+                        winnerGoals = playerStats.Голы_Месяц || playerStats.Goly_Mesyac || 0;
+                        winnerAssists = playerStats.Пасы_Месяц || playerStats.Pasy_Mesyac || 0;
                     }
                 }
 
                 if (mainMenuContainer) {
-                    mainMenuContainer.innerHTML = `
-                        <div style="font-weight: bold; font-size: 1.1rem;">${winnerName}</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top:4px;">ФК «${winnerTeam}» &bull; ${displayTitle}</div>
-                    `;
+                    mainMenuContainer.innerHTML = '<div style="font-weight: bold; font-size: 1.1rem;">' + winnerName + '</div><div style="font-size: 0.8rem; color: var(--text-muted); margin-top:4px;">ФК «' + winnerTeam + '» &bull; ' + displayTitle + '</div>';
                 }
                 
                 if (pageContainer) {
@@ -540,7 +498,8 @@
                                 <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px;">${winnerName}</div>
                                 <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 5px;"><i class="fa-solid fa-shirt"></i> ФК «${winnerTeam}»</div>
                             </div>
-                            <div style="display: flex; justify-content: center; gap: 40px; width: 100%; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">
+                            <div style="font-size: 0.9rem; font-weight: bold; color: var(--accent-color); border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 5px;">СТАТИСТИКА ЗА МЕСЯЦ:</div>
+                            <div style="display: flex; justify-content: center; gap: 40px; width: 100%; margin-top: -5px;">
                                 <div>
                                     <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-color);">${winnerGoals}</div>
                                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Голы</div>
@@ -550,7 +509,6 @@
                                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px;">Пасы</div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Всего голосов: ${maxVotes} шт.</div>
                         </div>
                     `;
                 }
@@ -630,33 +588,45 @@ formData.append(TOURNAMENT_ENTRY_ID, tournamentName);
             });
         }
 
-        function renderStats() {
+                function renderStats() {
             const container = document.getElementById('statsList');
             container.innerHTML = '';
 
-            const filteredStats = dbData.stats.filter(s => s.Турнир_ID == currentTournamentId);
+            const filteredStats = dbData.stats.filter(function(s) { return s.Турнир_ID == currentTournamentId; });
 
             if (filteredStats.length === 0) {
                 container.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted)">Нет статистики</td></tr>';
                 return;
             }
 
-            filteredStats.sort((a, b) => parseInt(b.Голы || 0) - parseInt(a.Голы || 0));
+            // Сортировка остается по общему количеству голов за весь турнир
+            filteredStats.sort(function(a, b) { return parseInt(b.Голы || 0) - parseInt(a.Голы || 0); });
 
-            filteredStats.forEach(s => {
+            filteredStats.forEach(function(s) {
                 const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                    <td>
-                        <strong>${s.Игрок || s.Igrok || s.player || ''}</strong>
-                        <span class="player-team">${s.Команда || s.Komanda || s.team || ''}</span>
-                    </td>
-                    <td style="font-weight:bold; color:var(--accent-color)">${s.Голы || s.Goly || s.goals || 0}</td>
-                    <td>${s.Пасы || s.Pasy || s.assists || 0}</td>
-                `;
+                
+                // Вытаскиваем общие цифры и цифры за месяц
+                const totalGoals = s.Голы || s.Goly || 0;
+                const monthGoals = s.Голы_Месяц || s.Goly_Mesyac || 0;
+                
+                const totalAssists = s.Пасы || s.Pasy || 0;
+                const monthAssists = s.Пасы_Месяц || s.Pasy_Mesyac || 0;
+
+                tr.innerHTML = '<td>' +
+                                    '<strong>' + (s.Игрок || s.Igrok || '') + '</strong>' +
+                                    '<span class="player-team">' + (s.Команда || s.Komanda || '') + '</span>' +
+                               '</td>' +
+                               '<td style="font-weight:bold; color:var(--accent-color)">' + 
+                                    totalGoals + 
+                                    '<div style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-top: 2px;">(' + monthGoals + ')</div>' + 
+                               '</td>' +
+                               '<td>' + 
+                                    totalAssists + 
+                                    '<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">(' + monthAssists + ')</div>' + 
+                               '</td>';
                 container.appendChild(tr);
             });
         }
-
         window.onload = initApp;
     </script>
 </body>
